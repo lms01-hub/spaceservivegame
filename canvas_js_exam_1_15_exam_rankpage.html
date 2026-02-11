@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>랭킹 (Top 50)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+:root{
+--neon:#00fff7;
+--pink:#ff2cdf;
+}
+
+*{box-sizing:border-box}
+
+body{
+margin:0;
+font-family:'Orbitron';
+background:#02030a;
+color:#fff;
+overflow-x:hidden;
+}
+
+#starfield{
+position:fixed;
+inset:0;
+z-index:-1;
+}
+
+.game-title{
+text-align:center;
+font-size:42px;
+margin:20px 0 6px;
+color:var(--neon);
+text-shadow:0 0 20px var(--neon);
+letter-spacing:4px;
+animation:drop 1s ease;
+}
+
+@keyframes drop{
+from{opacity:0;transform:translateY(-40px)}
+to{opacity:1;transform:none}
+}
+
+.wrap{
+max-width:720px;
+margin:auto;
+padding:10px 14px 50px;
+animation:fadeUp .8s ease;
+}
+
+@keyframes fadeUp{
+from{opacity:0;transform:translateY(30px)}
+to{opacity:1}
+}
+
+.header{text-align:center}
+
+.title{text-shadow:0 0 10px var(--pink)}
+
+.card{
+background:rgba(255,255,255,.05);
+backdrop-filter:blur(10px);
+border-radius:18px;
+border:1px solid rgba(255,255,255,.12);
+box-shadow:0 0 40px rgba(0,255,255,.2);
+overflow:hidden;
+}
+
+.toolbar{
+display:flex;
+justify-content:space-between;
+padding:12px;
+}
+
+.btn{
+background:transparent;
+border:1px solid var(--neon);
+color:var(--neon);
+padding:8px 14px;
+border-radius:10px;
+cursor:pointer;
+box-shadow:0 0 10px var(--neon);
+transition:.2s;
+}
+
+.btn:hover{
+background:var(--neon);
+color:#000;
+box-shadow:0 0 25px var(--neon);
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+font-size:13px;
+}
+
+thead th{
+padding:10px;
+background:linear-gradient(90deg,#0ff4,#f0f4);
+}
+
+tbody td{
+padding:10px;
+text-align:center;
+}
+
+tbody tr:hover{background:rgba(0,255,255,.08)}
+
+.rank{font-size:22px;font-weight:900}
+
+.top1{color:#ffd700;text-shadow:0 0 12px gold}
+.top2{color:#c0c0c0}
+.top3{color:#cd7f32}
+
+.crown{
+font-size:20px;
+margin-right:4px;
+}
+
+.hl{
+outline:2px solid var(--pink);
+box-shadow:0 0 20px var(--pink);
+}
+
+#myRankBox{
+margin:14px auto;
+padding:12px;
+border:1px solid var(--pink);
+border-radius:14px;
+text-align:center;
+box-shadow:0 0 20px var(--pink);
+display:none;
+}
+
+.footer{text-align:center;font-size:11px;opacity:.6;margin-top:12px}
+.row-1,.row-2,.row-3{
+transition:.3s;
+}
+
+</style>
+
+
+</head>
+<body>
+    <canvas id="starfield"></canvas>
+
+<audio id="rankSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3b1b6a3c9e.mp3?filename=game-notification-199277.mp3"></audio>
+
+    <div class="game-title">👽Galaxy Survivor🤖</div>
+<div class="wrap">
+    <div class="header">
+        <div>
+            <div class="title">🏆 랭킹 TOP 50</div>
+           <div class="sub">더 오래 살아남을수록 높은 순위입니다 (단위: 초)</div>
+
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="toolbar">
+            <button class="btn ghost" id="btnRefresh">새로고침</button>
+            <button class="btn" id="btnBack">게임으로 돌아가기</button>
+        </div>
+
+        <div class="table-wrap">
+            <table aria-label="랭킹 표">
+                <thead>
+                    <tr>
+                        <th class="rank">순위</th>
+                        <th>아이디</th>
+                        <th>기록(초)</th>
+                        <th>저장시각</th>
+                    </tr>
+                </thead>
+                <tbody id="rankBody">
+                    <tr><td colspan="4">불러오는중...</td></tr>
+                </tbody>
+            </table>    
+        </div>
+    </div>
+
+    <div class="footer">
+        * 동점일 경우 저장 순서로 정렬될 수 있어요.<br/>
+        * 실제 서비스에서는 Firestore 보안 규칙을 꼭 적용해야 해요.
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/12.3.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore-compat.js"></script>
+
+<script>
+var firebaseConfig = {
+    apiKey: "AIzaSyDdjYf_8gLtqSnCtfgj_sZ4w1Bh2JVQTHM",
+    authDomain: "my-webgame-project1-f4e1b.firebaseapp.com",
+    projectId: "my-webgame-project1-f4e1b",
+    storageBucket: "my-webgame-project1-f4e1b.firebasestorage.app",
+    messagingSenderId: "143089634435",
+    appId: "1:143089634435:web:e5ee71a77d74a071a99fb6"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+// ✅ getQueryParam 함수 오류 수정
+function getQueryParam(name) {
+    var query = location.search.replace(/^\?/, '');
+    var parts = query.split('&');
+    for (var i = 0; i < parts.length; i++) { // part → parts
+        var kv = parts[i].split('=');
+        if (decodeURIComponent(kv[0]) === name) { // --- → ===
+            return kv[1] ? decodeURIComponent(kv[1]) : '';
+        }
+    }
+    return null;
+}
+
+var lastId = getQueryParam('lastId');
+var lastTime = getQueryParam('lastTime');
+
+function to2(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '';
+    return (Math.round(n * 100) / 100).toFixed(2);
+}
+
+function fmtDate(ts) {
+    if (!ts || !ts.toDate) return '';
+    var d = ts.toDate();
+    var y = d.getFullYear();
+    var m = d.getMonth() + 1;
+    var day = d.getDate();
+    var hh = d.getHours();
+    var mm = d.getMinutes();
+
+    if (m < 10) m = '0' + m;
+    if (day < 10) day = '0' + day;
+    if (hh < 10) hh = '0' + hh;
+    if (mm < 10) mm = '0' + mm;
+
+    return y + '-' + m + '-' + day + ' ' + hh + ':' + mm;
+}
+
+// ✅ HTML escape 오류 수정
+function escapeHtml(s) {
+    s = String(s);
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ✅ Firestore 랭킹 로드
+function loadRanking() {
+    var body = document.getElementById('rankBody');
+    body.innerHTML = '<tr><td colspan="4">⚡ 데이터 스캔중...</td></tr>';
+
+
+    db.collection('scores')
+        .orderBy('time', 'desc')
+        .limit(50)
+        .get()
+        .then(function(snapshot) {
+            var html = '';
+            var rank = 0;
+
+            snapshot.forEach(function(doc) { // ✅ 괄호 오류 수정
+                var data = doc.data() || {};
+                var userId = data.userId || '';
+                var time = Number(data.time);
+                var createdAt = data.createdAt || null;
+
+                rank++;
+
+                var medal = '';
+                if (rank === 1) medal = '🥇 ';
+                else if (rank === 2) medal = '🥈 ';
+                else if (rank === 3) medal = '🥉 ';
+
+                var rowClass = '';
+                if (rank <= 10) rowClass = 'row-' + rank;
+
+                var isHL = false;
+                if (lastId !== null && lastTime !== null) {
+                    if (String(userId) === String(lastId) && to2(Number(time)) === to2(Number(lastTime))) {
+                        isHL = true;
+                    }
+                }
+
+                var rankClass = '';
+                if (rank === 1) rankClass = 'top1';
+                else if (rank === 2) rankClass = 'top2';
+                else if (rank === 3) rankClass = 'top3';
+
+                html += '<tr class="' + (isHL ? 'hl ' : '') + rowClass + '">';
+                html += '<td class="rank ' + rankClass + '">' + medal + rank + '</td>';
+                html += '<td>' + escapeHtml(userId) + '</td>';
+                html += '<td>' + to2(time) + '</td>';
+                html += '<td>' + fmtDate(createdAt) + '</td>';
+                html += '</tr>';
+            });
+
+            if (html === '') {
+                body.innerHTML = '<tr><td colspan="4">아직 기록이 없습니다.</td></tr>';
+            } else {
+                body.innerHTML = html;
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            body.innerHTML = '<tr><td colspan="4" style="color:#c00;">불러오기에 실패했습니다. 네트워크를 확인하세요.</td></tr>';
+        });
+}
+
+// ✅ 버튼 오타 수정 (btnBank → btnBack)
+document.getElementById('btnRefresh').onclick = function() {
+    loadRanking();
+};
+document.getElementById('btnBack').onclick = function() {
+    location.replace("canvas_js_exam_1_15_exam.html");
+};
+
+
+
+setTimeout(()=>{
+document.querySelectorAll('.row-1,.row-2,.row-3').forEach(r=>{
+r.style.transform='scale(1.03)';
+});
+},500);
+
+
+/* ⭐ 사운드 */
+addEventListener("click",()=>{
+document.getElementById("rankSound").play();
+},{once:true});
+
+
+/* ⭐ 내 순위 박스 생성 */
+var box=document.createElement("div");
+box.id="myRankBox";
+document.querySelector(".wrap").insertBefore(box,document.querySelector(".card"));
+
+/* ⭐ loadRanking 살짝 확장 */
+var _load=loadRanking;
+loadRanking=function(){
+_load();
+setTimeout(()=>{
+let rows=document.querySelectorAll("#rankBody tr");
+rows.forEach((r,i)=>{
+if(i==0){
+r.children[0].innerHTML='<span class="crown">👑</span>'+r.children[0].innerHTML;
+}
+
+if(r.classList.contains("hl")){
+box.style.display="block";
+box.innerHTML="😈 YOUR RECORD<br>"+r.innerText;
+}
+});
+},600);
+}
+
+/* ⭐ 별 배경 */
+const c=document.getElementById("starfield");
+const ctx=c.getContext("2d");
+function resize(){
+const dpr=window.devicePixelRatio||1;
+c.width=innerWidth*dpr;
+c.height=innerHeight*dpr;
+c.style.width=innerWidth+"px";
+c.style.height=innerHeight+"px";
+ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+resize();addEventListener("resize",resize);
+
+let stars=[];
+for(let i=0;i<200;i++){
+stars.push({
+x:Math.random()*c.width,
+y:Math.random()*c.height,
+z:Math.random()*2+1,
+speed:Math.random()*3+1
+});
+}
+
+
+let warp=true;
+setTimeout(()=>warp=false,1500); // 1.5초 후 정상모드
+
+function anim(){
+ctx.clearRect(0,0,c.width,c.height);
+
+stars.forEach(s=>{
+if(warp){
+s.y+=s.speed*6;
+}else{
+s.y+=s.z;
+}
+
+if(s.y>c.height){
+s.y=0;
+s.x=Math.random()*c.width;
+}
+
+ctx.fillStyle="#0ff";
+ctx.fillRect(s.x,s.y,2,2);
+});
+
+requestAnimationFrame(anim);
+}
+
+anim();
+loadRanking();
+
+</script>
+</body>
+</html>
