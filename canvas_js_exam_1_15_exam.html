@@ -100,30 +100,54 @@
     touch-action:none; user-select:none; -webkit-user-select:none;
   }
   .controls button:active{ background-color:#555; }
-  #startBtn {
-    position: absolute;
-    top: 45%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    background: #4caf50;
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-    padding: 30px 60px;
-    border-radius: 10px;
-    cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    text-align: center;
-    transition: all 0.2s ease;
-    user-select: none;
-  }
-  #startBtn:hover{
-    background: #45a049;
-    transform: translate(-50%,-50%) scale(1.05);
-  }
-  #startBtn:active{
-    transform: translate(-50%,-50%) scale(0.95);
-  }
+  #startBtn{
+  position:relative;
+  isolation:isolate;  
+  background: #2d6cdf;   /* ⭐ 기본 배경 필수 */
+  color: white;
+  border-radius: 16px;
+  transform-origin: center center; 
+  pointer-events: auto;
+  will-change: transform;
+
+  position: relative;   /* 중요 */
+  z-index: 20;          /* QR보다 높게 */
+
+  flex-shrink: 0;              /* ⭐ 절대 찌부 안 됨 */
+  width: 280px;                /* 고정 폭 */
+  min-height: 200px;
+
+  display: flex;               /* 내부 정렬 고정 */
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+
+  padding: 24px 18px;
+  line-height: 1.5;
+}
+#startBtn::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:#45a049;
+  border-radius:16px;
+  z-index:-1;
+
+  transform: scale(1);
+  transition: transform .15s ease, opacity .15s ease;
+  opacity:0;
+}
+
+#startBtn:hover::before{
+  opacity:1;
+  transform: scale(1.05);
+}
+
+
+#startBtn:active{
+  transform: scale(0.95);
+}
   .messageBox{
     display:none;
     position:absolute;
@@ -287,7 +311,88 @@
 #cancelBtn:hover{
     transform:scale(1.05);
 }
+/* === QR SHARE === */
 
+/* START 영역 전체 */
+#startArea{
+  position:absolute;
+  top:45%;
+  left:50%;
+  transform:translate(-50%, -50%);
+  display:flex;
+  align-items:center;
+  gap:80px;
+  z-index:10;
+}
+
+/* QR 공통 */
+.qr-share{
+  pointer-events: none; 
+  position: relative;
+  z-index: 5;
+  flex-shrink: 1;
+  text-align:center;
+  background:rgba(0,0,0,.45);
+  border:2px solid #00ff88;
+  border-radius:16px;
+  padding:14px;
+
+  box-shadow:0 0 30px rgba(0,255,136,.8);
+}
+
+/* QR 크기 크게 */
+.qr-share img{
+  width:160px;
+  height:160px;
+}
+
+/* QR 아래 텍스트 */
+.qr-text{
+  margin-top:8px;
+  font-size:14px;
+  font-weight:700;
+  color:#00ff88;
+  text-shadow:0 0 10px #00ff88;
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px){
+  #startArea{
+    flex-direction:column;
+    gap:20px;
+  }
+
+  .qr-share img{
+    width:130px;
+    height:130px;
+  }
+}
+/* 📱 모바일에서는 QR 숨김 */
+@media (max-width: 768px){
+  .qr-share{
+    display: none;
+  }
+}
+@media (max-width: 768px){
+
+  #startArea{
+    top: 50%;
+    gap: 0;
+  }
+
+  #startBtn{
+    width: 90vw;          /* 화면 거의 꽉 */
+    max-width: 360px;
+    min-height: 220px;
+
+    font-size: 32px;
+    line-height: 1.4;
+  }
+
+  #startBtn span{
+    font-size: 16px;
+  }
+}
 </style>
 <script type="module">
   import { initializeApp} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
@@ -323,18 +428,31 @@
 <canvas id="canvas"></canvas>
 
 
-<div id="startBtn">
-  Start<br><br>
-  <span style="font-size:14px; font-weight:normal; line-height:1.4">
-    이 게임은 외계인으로부터<br>
-    오래 살아남는 게임입니다.<br><br>
+<div id="startArea">
+  
+  <!-- 왼쪽 QR -->
+  <div class="qr-share left">
+    <img src="qr.png" alt="QR Left">
+    <div class="qr-text">SCAN<br>PLAY</div>
+  </div>
 
-    HP가 다 닳기 전까지 살아남으세요!<br>
-    총알을 사용할 때마다<br>
-    HP가 조금씩 줄어듭니다 🙂
-  </span>
+  <!-- START 버튼 -->
+  <div id="startBtn">
+    Start<br><br>
+    <span style="font-size:14px; font-weight:normal; line-height:1.4">
+      이 게임은 외계인으로부터<br>
+      오래 살아남는 게임입니다.<br><br>
+      HP가 다 닳기 전까지 살아남으세요!
+    </span>
+  </div>
+
+  <!-- 오른쪽 QR -->
+  <div class="qr-share right">
+    <img src="qr.png" alt="QR Right">
+    <div class="qr-text">SCAN<br>PLAY</div>
+  </div>
+
 </div>
-
 <div class="messageBox" id="msgBox">
   <div id="msgText"></div>
   <input type="text" id="userId" placeholder="(영어+숫자) 5~15자이내">
@@ -349,8 +467,14 @@
   </div>
   <div class="row">
     <button id="leftBtn">←</button>
-    <button id="downBtn">↓</button>
+
+    <!-- 🔥 여기 추가 -->
+    <button id="fireBtn">🔥</button>
+
     <button id="rightBtn">→</button>
+  </div>
+  <div class="row">
+    <button id="downBtn">↓</button>
   </div>
 </div>
 
@@ -367,6 +491,7 @@
 </script>
 
 <script>
+
 let userInteracted=false;
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -413,10 +538,9 @@ function applySoundState(){
     }
 }
 soundToggle.addEventListener('change',()=>{
-    soundEnabled=soundToggle.checked;
-    
+    soundEnabled = soundToggle.checked;
+    applySoundState();   // ⭐ 이 줄 추가
 });
-
 
 const bgm = new Audio("background.mp3");
 bgm.loop = true;
@@ -452,7 +576,16 @@ const startBtn = document.getElementById('startBtn');
 
 // 함수들
 
+const isMobile =
+  window.matchMedia("(pointer: coarse)").matches ||
+  window.innerWidth <= 768;
 
+
+if (isMobile) {
+  startBtn.style.width = "80vw";
+  startBtn.style.fontSize = "6vw";
+  startBtn.style.padding = "20px 0";
+}
 const timeDisplay = document.getElementById("timeDisplay");
 
 function drawTimer() {
@@ -539,6 +672,7 @@ cancelBtn.addEventListener('click', () => {
 });
 
 startBtn.addEventListener('click', async () => {
+  document.getElementById('startArea').style.display = 'none';
   userInteracted = true;
 
   // ✅ 오디오 unlock (모든 사운드)
@@ -1005,6 +1139,50 @@ bindButton("leftBtn", "ArrowLeft");
 bindButton("rightBtn", "ArrowRight");
 bindButton("upBtn", "ArrowUp");
 bindButton("downBtn", "ArrowDown");
+const fireBtn = document.getElementById("fireBtn");
+
+if (fireBtn) {
+  fireBtn.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    shootMobile();
+  }, { passive:false });
+
+  fireBtn.addEventListener("mousedown", () => {
+    shootMobile();
+  });
+}
+
+function shootMobile() {
+  if (!gameStarted || reloading) return;
+
+  const now = Date.now();
+  if (now - lastShot < shootDelay) return;
+
+  if (ammo <= 0) {
+    reloading = true;
+    setTimeout(() => {
+      ammo = maxAmmo;
+      reloading = false;
+    }, 2000);
+    return;
+  }
+
+  bullets.push({
+    x: x + 10,
+    y: y,
+    speed: 7
+  });
+
+  safePlay(shootSound);
+  ammo--;
+
+  if (gameStarted) {
+    playerLife -= 0.2;
+    if (playerLife < 0) playerLife = 0;
+  }
+
+  lastShot = now;
+}
 document.getElementById('btnRank').addEventListener('click',function(){
     location.replace("canvas_js_exam_1_15_exam_rankpage.html");
 });
