@@ -285,7 +285,7 @@
 
     box-shadow:0 0 10px #00e5ff inset;
 }
-#saveBtn,#cancelBtn{
+#saveBtn{
     margin:8px;
     padding:10px 20px;
     font-size:16px;
@@ -299,10 +299,7 @@
     box-shadow:0 0 10px #00e5ff;
 }
 
-#cancelBtn{
-    background:#ff1744;
-    box-shadow:0 0 10px #ff1744;
-}
+
 
 #saveBtn:hover{
     transform:scale(1.05);
@@ -458,7 +455,7 @@
   <input type="text" id="userId" placeholder="(영어+숫자) 5~15자이내">
   <br>
   <button id="saveBtn">저장</button>
-  <button id="cancelBtn">취소</button>
+ 
 </div>
 
 <div class="controls">
@@ -666,10 +663,7 @@ saveBtn.addEventListener('click', async () => {
   resetGame();
 });
 
-cancelBtn.addEventListener('click', () => {
-  msgBox.style.display = 'none';
-  resetGame();
-});
+
 
 startBtn.addEventListener('click', async () => {
   document.getElementById('startArea').style.display = 'none';
@@ -1071,8 +1065,11 @@ function drawItems() {
   }
 }
 
-
-setInterval(draw, 16);
+function gameLoop(){
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
 //총알변수
 let bullets=[];
 let items = [];
@@ -1230,14 +1227,20 @@ window.addEventListener('pageshow', () => {
 </script>
 
 <script>
-for(let i=0;i<150;i++){
-  const s=document.createElement("div");
-  s.className="star";
-  s.style.left=Math.random()*innerWidth+"px";
-  s.style.top=Math.random()*innerHeight+"px";
-  s.style.opacity=Math.random();
-  s.style.transform=`scale(${Math.random()})`;
-  document.body.appendChild(s);
+const isMobileDevice =
+  window.matchMedia("(pointer: coarse)").matches ||
+  window.innerWidth <= 768;
+
+if (!isMobileDevice) {
+  for(let i=0;i<120;i++){
+    const s=document.createElement("div");
+    s.className="star";
+    s.style.left=Math.random()*innerWidth+"px";
+    s.style.top=Math.random()*innerHeight+"px";
+    s.style.opacity=Math.random();
+    s.style.transform=`scale(${Math.random()})`;
+    document.body.appendChild(s);
+  }
 }
 </script>
 
